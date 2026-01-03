@@ -1,6 +1,6 @@
 package consensus
 
-import "github.com/didchain/PBFT/message"
+import "pbftdidchain/message"
 
 type NormalLog struct {
 	clientID   string                    `json:"clientID"`

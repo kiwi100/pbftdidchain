@@ -3,8 +3,8 @@ package consensus
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/didchain/PBFT/message"
-	"github.com/didchain/PBFT/p2pnetwork"
+	"pbftdidchain/message"
+	"pbftdidchain/p2pnetwork"
 	"time"
 )
 
@@ -277,11 +277,13 @@ func (s *StateEngine) rawRequest(request *message.Request) (err error) {
 }
 
 /*
-
 	Like PRE-PREPAREs, the PREPARE and COMMIT messages sent in the other phases also contain n and v. A replica
+
 only accepts one of these messages provided that it is in view v; that it can verify the authenticity of the message;
 and that n is between a low water mark h and a high water mark H.
+
 	A backup i accepts the PRE-PREPARE message provided (in addition to the conditions above) it has not accepted
+
 a PRE-PREPARE for view v and sequence number n containing a different digest.If a backup i accepts the PRE-PREPARE and
 it has request m in its log, it enters the prepare phase by multicasting a PREPARE message with m’s digest to all other
 replicas; in addition, it adds both the PRE-PREPARE and PREPARE messages to its log.
@@ -303,16 +305,18 @@ func (s *StateEngine) idle2PrePrepare(ppMsg *message.PrePrepare) (err error) {
 
 	log := s.getOrCreateLog(ppMsg.SequenceID)
 
-	if log.Stage != Idle {
-		return fmt.Errorf("invalid stage[current %s] when to prePrepared", log.Stage)
-	}
+	// 如果已经收到过相同的PrePrepare消息，直接返回（处理重复消息）
 	if log.PrePrepare != nil {
 		if log.PrePrepare.Digest != ppMsg.Digest {
 			return fmt.Errorf("pre-Prepare message in same v-n but not same digest")
 		} else {
-			fmt.Println("======>[idle2PrePrepare] duplicate pre-Prepare message")
-			return
+			fmt.Println("======>[idle2PrePrepare] duplicate pre-Prepare message, already processed")
+			return nil
 		}
+	}
+
+	if log.Stage != Idle {
+		return fmt.Errorf("invalid stage[current %s] when to prePrepared", log.Stage)
 	}
 	prepare := &message.Prepare{
 		ViewID:     s.CurViewID,
@@ -320,7 +324,7 @@ func (s *StateEngine) idle2PrePrepare(ppMsg *message.PrePrepare) (err error) {
 		Digest:     ppMsg.Digest,
 		NodeID:     s.NodeID,
 	}
-	cMsg := message.CreateConMsg(message.MTPrepare, ppMsg)
+	cMsg := message.CreateConMsg(message.MTPrepare, prepare)
 	if err := s.p2pWire.BroadCast(cMsg); err != nil {
 		return err
 	}

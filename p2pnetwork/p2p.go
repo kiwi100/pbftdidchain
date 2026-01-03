@@ -3,9 +3,9 @@ package p2pnetwork
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/didchain/PBFT/message"
 	"io"
 	"net"
+	"pbftdidchain/message"
 	"time"
 )
 

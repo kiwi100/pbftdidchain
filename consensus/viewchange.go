@@ -2,7 +2,7 @@ package consensus
 
 import (
 	"fmt"
-	"github.com/didchain/PBFT/message"
+	"pbftdidchain/message"
 )
 
 type VCCache struct {
@@ -83,7 +83,9 @@ func (s *StateEngine) computePMsg() map[int64]*message.PTuple {
 
 /*
 View-Change Messages
+
 	When a backup i suspects the primary for view v is faulty, it enters view v + 1 and multicasts a
+
 ⟨VIEW-CHANGE, v + 1, h, C, P, Q, i⟩αi message to all replicas. Here h is the sequence number of the latest stable
 checkpoint known to i, C is a set of pairs with the sequence number and digest of each checkpoint stored at i,
 and P and Q are the sets described above. These sets are updated before sending the VIEW-CHANGE message using
@@ -94,6 +96,12 @@ the size of the Q by a constant. It is interesting to note that VIEW-CHANGE mess
 or CHECKPOINT messages.
 */
 func (s *StateEngine) ViewChange() {
+	// 初始化lastCP如果为nil（还没有创建过checkpoint）
+	if s.lastCP == nil {
+		s.lastCP = NewCheckPoint(0, s.CurViewID)
+		s.lastCP.IsStable = true
+		s.lastCP.CPMsg = make(map[int64]*message.CheckPoint)
+	}
 
 	fmt.Printf("======>[ViewChange] (%d, %d).....\n", s.CurViewID, s.lastCP.Seq)
 	s.nodeStatus = ViewChanging
@@ -309,7 +317,8 @@ func (s *StateEngine) GetON(newVID int64) (int64, int64, message.OMessage, messa
 			N[i] = &message.PrePrepare{
 				ViewID:     newVID,
 				SequenceID: i,
-				Digest:     nil,
+				//Digest:     nil,
+				Digest: "",
 			}
 		}
 	}
@@ -364,6 +373,12 @@ they mark as pre-prepared. Thereafter, normal case operation resumes.
 */
 
 func (s *StateEngine) updateStateNV(maxNV int64, vc *message.ViewChange) {
+	// 初始化lastCP如果为nil
+	if s.lastCP == nil {
+		s.lastCP = NewCheckPoint(0, s.CurViewID)
+		s.lastCP.IsStable = true
+		s.lastCP.CPMsg = make(map[int64]*message.CheckPoint)
+	}
 
 	if maxNV > s.lastCP.Seq {
 		cp := NewCheckPoint(maxNV, s.CurViewID)

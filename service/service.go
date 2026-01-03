@@ -3,8 +3,8 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/didchain/PBFT/message"
 	"net"
+	"pbftdidchain/message"
 )
 
 /*
@@ -16,8 +16,9 @@ replicas are non-faulty if they follow the algorithm in Section 4 and if no atta
 */
 
 type Service struct {
-	SrvHub   *net.UDPConn
-	nodeChan chan interface{}
+	SrvHub      *net.UDPConn
+	nodeChan    chan interface{}
+	clientAddrs map[string]*net.UDPAddr // 存储客户端地址映射
 }
 
 func InitService(port int, msgChan chan interface{}) *Service {
@@ -30,8 +31,9 @@ func InitService(port int, msgChan chan interface{}) *Service {
 	}
 	fmt.Printf("\n===>Service Listening at[%d]", port)
 	s := &Service{
-		SrvHub:   srv,
-		nodeChan: msgChan,
+		SrvHub:      srv,
+		nodeChan:    msgChan,
+		clientAddrs: make(map[string]*net.UDPAddr),
 	}
 	return s
 }
@@ -57,6 +59,12 @@ func (s *Service) WaitRequest(sig chan interface{}) {
 			fmt.Printf("\nService message parse err:%s", err)
 			continue
 		}
+		// 保存客户端地址（客户端监听在8088端口）
+		clientAddr := &net.UDPAddr{
+			IP:   rAddr.IP,
+			Port: 8088, // 客户端监听端口
+		}
+		s.clientAddrs[bo.ClientID] = clientAddr
 		go s.process(bo)
 	}
 }
@@ -73,11 +81,14 @@ func (s *Service) process(op *message.Request) {
 
 /*
 	Each replica i executes the operation requested by m  after committed-local(m, v, n, i)is true and i’s state
+
 reflects the sequential execution of all requests with lower sequence numbers. This ensures that all non- faulty replicas
 execute requests in the same order as required to provide the safety property. After executing the requested operation,
 replicas send a reply to the client. Replicas discard requests whose timestamp is lower than the timestamp in the last
 reply they sent to the client to guarantee exactly-once semantics.
+
 	We do not rely on ordered message delivery, and therefore it is possible for a replica to commit requests out
+
 of order. This does not matter since it keeps the pre- prepare, prepare, and commit messages logged until the
 corresponding request can be executed.
 */
@@ -94,10 +105,19 @@ func (s *Service) Execute(v, n, seq int64, o *message.Request) (reply *message.R
 	}
 
 	bs, _ := json.Marshal(r)
-	cAddr := net.UDPAddr{
-		Port: 8088,
+
+	// 从保存的客户端地址映射中获取地址
+	cAddr, ok := s.clientAddrs[o.ClientID]
+	if !ok {
+		// 如果找不到客户端地址，使用localhost作为默认值
+		cAddr = &net.UDPAddr{
+			IP:   net.IPv4(127, 0, 0, 1),
+			Port: 8088,
+		}
+		fmt.Printf("Warning: Client address not found for %s, using localhost\n", o.ClientID)
 	}
-	no, err := s.SrvHub.WriteToUDP(bs, &cAddr)
+
+	no, err := s.SrvHub.WriteToUDP(bs, cAddr)
 	if err != nil {
 		fmt.Printf("Reply client failed:%s\n", err)
 		return nil, err
@@ -108,10 +128,19 @@ func (s *Service) Execute(v, n, seq int64, o *message.Request) (reply *message.R
 
 func (s *Service) DirectReply(r *message.Reply) error {
 	bs, _ := json.Marshal(r)
-	cAddr := net.UDPAddr{
-		Port: 8088,
+
+	// 从保存的客户端地址映射中获取地址
+	cAddr, ok := s.clientAddrs[r.ClientID]
+	if !ok {
+		// 如果找不到客户端地址，使用localhost作为默认值
+		cAddr = &net.UDPAddr{
+			IP:   net.IPv4(127, 0, 0, 1),
+			Port: 8088,
+		}
+		fmt.Printf("Warning: Client address not found for %s, using localhost\n", r.ClientID)
 	}
-	no, err := s.SrvHub.WriteToUDP(bs, &cAddr)
+
+	no, err := s.SrvHub.WriteToUDP(bs, cAddr)
 	if err != nil {
 		fmt.Printf("Reply client failed:%s\n", err)
 		return err

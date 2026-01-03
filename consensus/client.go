@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"github.com/didchain/PBFT/message"
+	"pbftdidchain/message"
 	"time"
 )
 

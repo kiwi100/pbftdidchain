@@ -17,8 +17,8 @@ different root password and a different administrator. It is possible to obtain 
 base and for low degrees of replication one can buy operating systems from different vendors. N-version programming, i.e., 
 different teams of programmers produce different implementations, is another option for some services.
 
-![](./safe_prove.jpg)
+![](./paperFigurs/safe_prove.jpg)
 
-![](./normal_case_operation.jpg)
+![](./paperFigurs/normal_case_operation.jpg)
 
-![](./pbft--behavior.jpg)
+![](./paperFigurs/pbft--behavior.jpg)

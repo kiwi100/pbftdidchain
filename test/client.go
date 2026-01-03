@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/didchain/PBFT/message"
 	"net"
 	"os"
+	"pbftdidchain/message"
 	"strconv"
 	"sync"
 	"time"
@@ -16,6 +16,7 @@ func request(conn *net.UDPConn, wg *sync.RWMutex) {
 		wg.Lock()
 		primaryID, _ := strconv.Atoi(os.Args[1])
 		rAddr := net.UDPAddr{
+			IP:   net.IPv4(127, 0, 0, 1), // 设置为localhost
 			Port: message.PortByID(int64(primaryID)),
 		}
 
@@ -92,4 +93,5 @@ func main() {
 	//normalCaseOperation(30)
 	//normalCaseOperation(100)
 	normalCaseOperation(1)
+
 }
