@@ -48,6 +48,8 @@ type Request struct {
 	TimeStamp int64  `json:"timestamp"`
 	ClientID  string `json:"clientID"`
 	Operation string `json:"operation"`
+	TxHash    string `json:"txHash,omitempty"`    // 交易哈希（如果包含交易）
+	TxData    string `json:"txData,omitempty"`     // 交易数据（JSON格式）
 }
 
 func (r *Request) String() string {
